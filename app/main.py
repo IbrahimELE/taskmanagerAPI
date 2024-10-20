@@ -1,36 +1,37 @@
-from fastapi import FastAPI, Depends, HTTPException, status
+import sys
+import os
+
+# Add the parent directory to sys.path
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+
+from fastapi import FastAPI, Depends, HTTPException, status, Security
+from fastapi.security import OAuth2PasswordRequestForm
+from pydantic import EmailStr
+from typing import List
 from sqlalchemy.orm import Session
-from app.database import SessionLocal, engine
-from app.models import Base, UserDB
-from app.schemas import UserCreate, UserOut
-from app.crud import create_user, get_user_by_email
+from database import engine, get_db
+from models import Base, UserDB
+from schemas import UserCreate, UserOut, TaskCreate, TaskOut
+from crud import create_user, get_user_by_email, verify_password, create_task, get_tasks, get_task
+from auth import get_password_hash, get_current_user, create_access_token, verify_password
+from datetime import datetime
 
 # Create all tables in the database
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
-# Dependency to get DB session
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+
 
 @app.post("/users/", response_model=UserOut, status_code=status.HTTP_201_CREATED)
 def register_user(user: UserCreate, db: Session = Depends(get_db)):
-    db_user = get_user_by_email(db, user.e_mail)
-    if db_user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered",
-        )
-    return create_user(db=db, user=user)
+    hashed_password = get_password_hash(user.password)
+    user.password = hashed_password
+    return create_user(db, user)
 
-@app.get("/users/{e_mail}", response_model=UserOut)
-def read_user(e_mail: str, db: Session = Depends(get_db)):
-    user = get_user_by_email(db, e_mail)
+@app.get("/users/{email_address}", response_model=UserOut)
+def read_user(email_address: EmailStr, db: Session = Depends(get_db)):
+    user = get_user_by_email(db, email_address)
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -39,10 +40,48 @@ def read_user(e_mail: str, db: Session = Depends(get_db)):
     return user
 
 
+@app.post("/token/")
+def login_for_access_token(
+    form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)
+):
+    user = get_user_by_email(db, form_data.username)
+    if not user or not verify_password(form_data.password, user.password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"Authorization": "Bearer"},
+        )
+    access_token = create_access_token(data={"sub": user.email_address})
+    return {"access_token": access_token, "token_type": "Bearer"}
 
+@app.post("/tasks/", response_model=TaskOut)
+def create_task(task: TaskCreate, db: Session = Depends(get_db), user: UserOut = Depends(get_current_user)):
+    return create_task(db=db, task=task, user_id=user.email_address)
 
+@app.get("/tasks/", response_model=List[TaskOut])
+def read_tasks(db: Session = Depends(get_db), user: UserOut = Depends(get_current_user)):
+    return get_tasks(db=db, user_id=user.email_address)
 
+@app.get("/tasks/{task_id}", response_model=TaskOut)
+def read_task(task_id: int, db: Session = Depends(get_db)):
+    task = get_task(db=db, task_id=task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return task
 
+@app.put("/tasks/{task_id}", response_model=TaskOut)
+def update_task(task_id: int, task: TaskCreate, db: Session = Depends(get_db)):
+    updated_task = update_task(db=db, task_id=task_id, task=task)
+    if not updated_task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return updated_task
+
+@app.delete("/tasks/{task_id}", response_model=TaskOut)
+def delete_task(task_id: int, db: Session = Depends(get_db)):
+    deleted_task = delete_task(db=db, task_id=task_id)
+    if not deleted_task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return deleted_task
 
 
 
