@@ -9,22 +9,27 @@ from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import EmailStr
 from typing import List
 from sqlalchemy.orm import Session
-from database import engine, get_db
-from models import Base, UserDB
-from schemas import UserCreate, UserOut, TaskCreate, TaskOut
-from crud import create_user, get_user_by_email, verify_password, create_task, get_tasks, get_task
-from auth import get_password_hash, get_current_user, create_access_token, verify_password
+from database import engine, get_db, Base
+from models.user import UserDB
+from schemas.user import UserCreate, UserOut
+from schemas.task import TaskCreate, TaskOut
+from crud.user import create_user, get_user_by_email, verify_password
+from crud.task import create_task, get_tasks, get_task
+from app.utils.auth import get_password_hash, get_current_user, create_access_token, verify_password
 from datetime import datetime
 
-# Create all tables in the database
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
 
-
 @app.post("/users/", response_model=UserOut, status_code=status.HTTP_201_CREATED)
 def register_user(user: UserCreate, db: Session = Depends(get_db)):
+    if get_user_by_email(db, user.email_address):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Email already in use",
+        )
     hashed_password = get_password_hash(user.password)
     user.password = hashed_password
     return create_user(db, user)
