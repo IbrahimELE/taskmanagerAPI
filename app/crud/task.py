@@ -23,7 +23,7 @@ def create_task(db: Session, task: TaskCreate, user_id: str):
 def get_tasks(db: Session, user_id: str):
     return db.query(Task).filter(Task.user_id == user_id).all()
 
-def get_task(db: Session, task_id: int):
+def get_task(db: Session, task_id: int, user_id: str):
     return db.query(Task).filter(Task.id == task_id).first()
 
 def get_tasks_by_priority(db: Session, user_id: str):
