@@ -7,15 +7,16 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from fastapi import FastAPI, Depends, HTTPException, status, Security
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import EmailStr
-from typing import List
+from typing import List, Annotated
 from sqlalchemy.orm import Session
 from database import engine, get_db, Base
 from models.user import UserDB
-from schemas.user import UserCreate, UserOut
+from schemas.user import UserCreate, UserOut, User
 from schemas.task import TaskCreate, TaskOut
-from crud.user import create_user, get_user_by_email, verify_password
-from crud.task import create_task, get_tasks, get_task
-from app.utils.auth import get_password_hash, get_current_user, create_access_token, verify_password
+from schemas.token import Token
+from crud.user import create_user, get_user_by_email
+from crud.task import create_task, get_tasks, get_task, update_task, delete_task
+from app.utils.auth import get_current_user, create_access_token, verify_password
 from datetime import datetime
 
 Base.metadata.create_all(bind=engine)
@@ -23,16 +24,31 @@ Base.metadata.create_all(bind=engine)
 app = FastAPI()
 
 
-@app.post("/users/", response_model=UserOut, status_code=status.HTTP_201_CREATED)
+@app.post("/register/", response_model=UserOut, status_code=status.HTTP_201_CREATED)
 def register_user(user: UserCreate, db: Session = Depends(get_db)):
     if get_user_by_email(db, user.email_address):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Email already in use",
         )
-    hashed_password = get_password_hash(user.password)
-    user.password = hashed_password
+
     return create_user(db, user)
+
+@app.post("/token", response_model=Token)
+def login_for_access_token(
+    form_data: Annotated[OAuth2PasswordRequestForm, Depends()], db: Session = Depends(get_db)
+):
+
+    user = get_user_by_email(db, form_data.username)
+
+    if not user or not verify_password(form_data.password, user.password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"Authorization": "Bearer"},
+        )
+    access_token = create_access_token(data={"sub": user.email_address})
+    return {"access_token": access_token, "token_type": "Bearer"}
 
 @app.get("/users/{email_address}", response_model=UserOut)
 def read_user(email_address: EmailStr, db: Session = Depends(get_db)):
@@ -45,23 +61,11 @@ def read_user(email_address: EmailStr, db: Session = Depends(get_db)):
     return user
 
 
-@app.post("/token/")
-def login_for_access_token(
-    form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)
-):
-    user = get_user_by_email(db, form_data.username)
-    if not user or not verify_password(form_data.password, user.password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-            headers={"Authorization": "Bearer"},
-        )
-    access_token = create_access_token(data={"sub": user.email_address})
-    return {"access_token": access_token, "token_type": "Bearer"}
+
 
 @app.post("/tasks/", response_model=TaskOut)
-def create_task(task: TaskCreate, db: Session = Depends(get_db), user: UserOut = Depends(get_current_user)):
-    return create_task(db=db, task=task, user_id=user.email_address)
+def task_maker(task: TaskCreate, db: Session = Depends(get_db), user: UserOut = Depends(get_current_user)):
+    return create_task(db, task, user.email_address)
 
 @app.get("/tasks/", response_model=List[TaskOut])
 def read_tasks(db: Session = Depends(get_db), user: UserOut = Depends(get_current_user)):
@@ -75,14 +79,15 @@ def read_task(task_id: int, db: Session = Depends(get_db)):
     return task
 
 @app.put("/tasks/{task_id}", response_model=TaskOut)
-def update_task(task_id: int, task: TaskCreate, db: Session = Depends(get_db)):
+def full_update_task(task_id: int, task: TaskCreate, db: Session = Depends(get_db)):
+    
     updated_task = update_task(db=db, task_id=task_id, task=task)
     if not updated_task:
         raise HTTPException(status_code=404, detail="Task not found")
     return updated_task
 
 @app.delete("/tasks/{task_id}", response_model=TaskOut)
-def delete_task(task_id: int, db: Session = Depends(get_db)):
+def delete_selected_task(task_id: int, db: Session = Depends(get_db)):
     deleted_task = delete_task(db=db, task_id=task_id)
     if not deleted_task:
         raise HTTPException(status_code=404, detail="Task not found")
@@ -90,6 +95,9 @@ def delete_task(task_id: int, db: Session = Depends(get_db)):
 
 
 
+@app.get("/protected-route/")
+async def protected_route(current_user: User = Depends(get_current_user)):
+    return {"message": "You are authenticated", "user": current_user.email_address}
 
 
 
