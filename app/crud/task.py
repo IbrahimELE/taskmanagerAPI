@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from sqlalchemy import desc, asc
 from models.task import Task
 from schemas.task import TaskCreate
 
@@ -24,6 +25,15 @@ def get_tasks(db: Session, user_id: str):
 
 def get_task(db: Session, task_id: int):
     return db.query(Task).filter(Task.id == task_id).first()
+
+def get_tasks_by_priority(db: Session, user_id: str):
+    return db.query(Task).filter(Task.user_id == user_id).order_by(desc(Task.priority)).all()
+
+def get_tasks_by_status(db: Session, user_id: str, status: str):
+    return db.query(Task).filter(Task.user_id==user_id, Task.status == status).all()
+
+def get_task_by_deadline(db: Session, user_id: str):
+    return db.query(Task).filter(Task.user_id == user_id).order_by(asc(Task.deadline)).all()
 
 def update_task(db: Session, task_id: int, task: TaskCreate):
     db_task = db.query(Task).filter(Task.id == task_id).first()
