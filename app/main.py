@@ -12,10 +12,10 @@ from sqlalchemy.orm import Session
 from database import engine, get_db, Base
 from models.user import UserDB
 from schemas.user import UserCreate, UserOut, User
-from schemas.task import TaskCreate, TaskOut
+from schemas.task import TaskCreate, TaskOut, TaskStatus
 from schemas.token import Token
 from crud.user import create_user, get_user_by_email
-from crud.task import create_task, get_tasks, get_task, update_task, delete_task
+from crud.task import create_task, get_tasks, get_task, update_task, delete_task, get_tasks_by_priority, get_tasks_by_status, get_task_by_deadline
 from app.utils.auth import get_current_user, create_access_token, verify_password
 from datetime import datetime
 
@@ -71,6 +71,18 @@ def task_maker(task: TaskCreate, db: Session = Depends(get_db), user: UserOut = 
 def read_tasks(db: Session = Depends(get_db), user: UserOut = Depends(get_current_user)):
     return get_tasks(db=db, user_id=user.email_address)
 
+@app.get("/tasks/priority_first/", response_model=List[TaskOut]) 
+def filter_tasks_by_priority(db: Session = Depends(get_db), user: UserOut = Depends(get_current_user)):
+    return get_tasks_by_priority(db=db, user_id=user.email_address)
+
+@app.get("/tasks/status_choose/{status}", response_model=List[TaskOut])
+def filter_tasks_by_status(status: TaskStatus, db: Session = Depends(get_db), user: UserOut = Depends(get_current_user)):
+    return get_tasks_by_status(db=db, user_id=user.email_address, status=status)
+
+@app.get("/tasks/deadline_first", response_model=List[TaskOut])
+def filter_tasks_by_deadline(db: Session = Depends(get_db), user: UserOut = Depends(get_current_user)):
+    return get_task_by_deadline(db=db, user_id=user.email_address)
+
 @app.get("/tasks/{task_id}", response_model=TaskOut)
 def read_task(task_id: int, db: Session = Depends(get_db)):
     task = get_task(db=db, task_id=task_id)
@@ -92,13 +104,6 @@ def delete_selected_task(task_id: int, db: Session = Depends(get_db)):
     if not deleted_task:
         raise HTTPException(status_code=404, detail="Task not found")
     return deleted_task
-
-
-
-@app.get("/protected-route/")
-async def protected_route(current_user: User = Depends(get_current_user)):
-    return {"message": "You are authenticated", "user": current_user.email_address}
-
 
 
 
