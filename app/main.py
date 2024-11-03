@@ -84,11 +84,12 @@ def filter_tasks_by_deadline(db: Session = Depends(get_db), user: UserOut = Depe
     return get_task_by_deadline(db=db, user_id=user.email_address)
 
 @app.get("/tasks/{task_id}", response_model=TaskOut)
-def read_task(task_id: int, db: Session = Depends(get_db)):
-    task = get_task(db=db, task_id=task_id)
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
-    return task
+def read_task(task_id: int, db: Session = Depends(get_db), user: UserOut = Depends(get_current_user)):
+    try:
+        task = get_task(db=db, task_id=task_id, user_id=user.email_address)
+        return task
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
 
 @app.put("/tasks/{task_id}", response_model=TaskOut)
 def full_update_task(task_id: int, task: TaskCreate, db: Session = Depends(get_db)):
