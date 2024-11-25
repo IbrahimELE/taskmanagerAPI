@@ -1,17 +1,20 @@
+import os
+from dotenv import load_dotenv
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Annotated
 from jose import JWTError, jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
-from models.user import UserDB
-from crud.user import get_user_by_email
-from database import get_db
+from app.models.user import UserDB
+from app.crud.user import get_user_by_email
+from app.database import get_db
 import bcrypt 
+load_dotenv()
 # Secret key used to sign JWT tokens
-SECRET_KEY = "your-secret-key"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+SECRET_KEY = os.getenv("SECRET_KEY")
+ALGORITHM = os.getenv("ALGORITHM")
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token", scopes={"read": "Read access", "write": "Write access"})
 

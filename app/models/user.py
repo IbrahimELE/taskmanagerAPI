@@ -1,7 +1,7 @@
 from sqlalchemy import Column, String, Enum, Integer, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from enum import Enum as PyEnum
-from database import Base
+from app.database import Base
 
 
 class Role(str, PyEnum):

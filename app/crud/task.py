@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, asc
-from models.task import Task
-from schemas.task import TaskCreate
+from app.models.task import Task
+from app.schemas.task import TaskCreate
 
 
 def create_task(db: Session, task: TaskCreate, user_id: str):
