@@ -1,0 +1,28 @@
+version: '3'
+
+services:
+  db:
+    image: postgres
+    container_name: db
+
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: banananana
+      POSTGRES_DB: taskmanager-projekat
+    ports:
+      - 5434:5432
+
+  api:
+    container_name: taskmanager-api
+    restart: always
+    build: 
+      dockerfile: Dockerfile
+      context: .
+    ports:
+      - 8000:8000
+    depends_on:
+      - db
+    env_file:
+      - ./.env
+
+

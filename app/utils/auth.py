@@ -6,9 +6,9 @@ from jose import JWTError, jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
-from models.user import UserDB
-from crud.user import get_user_by_email
-from database import get_db
+from app.models.user import UserDB
+from app.crud.user import get_user_by_email
+from app.database import get_db
 import bcrypt 
 load_dotenv()
 # Secret key used to sign JWT tokens

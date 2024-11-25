@@ -5,8 +5,8 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from fastapi import FastAPI
-from database import engine, Base
-from routers import task, user
+from app.database import engine, Base
+from app.routers import task, user
 
 Base.metadata.create_all(bind=engine)
 app = FastAPI()

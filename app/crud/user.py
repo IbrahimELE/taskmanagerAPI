@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
-from models.user import UserDB
-from schemas.user import UserCreate, User
+from app.models.user import UserDB
+from app.schemas.user import UserCreate, User
 import bcrypt
 
 def create_user(db: Session, user: UserCreate):

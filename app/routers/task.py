@@ -2,10 +2,10 @@ from fastapi import FastAPI, Depends, HTTPException, status, APIRouter
 from pydantic import EmailStr
 from typing import List
 from sqlalchemy.orm import Session
-from database import engine, get_db, Base
-from schemas.user import UserOut
-from schemas.task import TaskCreate, TaskOut, TaskStatus
-from crud.task import create_task, get_tasks, get_task, update_task, delete_task, get_tasks_by_priority, get_tasks_by_status, get_task_by_deadline
+from app.database import engine, get_db, Base
+from app.schemas.user import UserOut
+from app.schemas.task import TaskCreate, TaskOut, TaskStatus
+from app.crud.task import create_task, get_tasks, get_task, update_task, delete_task, get_tasks_by_priority, get_tasks_by_status, get_task_by_deadline
 from app.utils.auth import get_current_user
 
 router = APIRouter()
